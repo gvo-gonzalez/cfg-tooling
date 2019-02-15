@@ -1,0 +1,68 @@
+---
+# tasks file for roles/blogsrvr
+- name: Stop Nginx if running
+  service:
+    name: nginx
+    state: stopped
+  become: yes
+
+- name: Check if nginx folder was renamed early before backingup
+  stat: path=/etc/nginx.orig
+  register: renamed_config
+  become: yes
+
+- name: Setting up our config directory for nginx
+  copy:
+    src:  /etc/nginx
+    dest: /etc/nginx.orig
+  when: not renamed_config.stat.exists
+  become: yes
+
+- name: Replace config directory
+  copy:
+    src: "{{ role_path }}/files/nginx"
+    dest: /etc
+  become: yes
+ 
+- name: Disable Default Virtual Host on Apache/Ubuntu14.04
+  shell: rm -f /etc/nginx/sites-enabled/default 
+  become: yes
+
+- name: Create ssl directory for our certificates
+  file:
+    path: /etc/nginx/ssl
+    state: directory
+  become: yes
+
+- name: Generate dhparam for ssl config
+  shell: openssl dhparam -out /etc/nginx/ssl/dhparams.pem 2048
+  args:
+    creates: /etc/nginx/ssl/dhparams.pem
+  become: yes
+
+- name: Copy SSL Certificates
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: '{{ role_path }}/files/your_domain_com.crt', dest: '/etc/nginx/ssl/' }
+    - { src: '{{ role_path }}/files/your_domain_com.key', dest: '/etc/nginx/ssl/' }
+  become: yes
+
+- name: Install vhost site http/https config
+  template:
+    src: "{{ role_path }}/templates/vhost.laravel.template.j2"
+    dest: /etc/nginx/sites-available/{{ servicename }}
+  become: yes
+
+- name: Check for service enabled
+  stat: path=/etc/nginx/sites-enabled/{{ servicename }}
+  register: site_enabled
+  become: yes
+
+- name: Enable service if not exists
+  #shell: ln -s /etc/nginx/sites-available/{{ servicename }} /etc/nginx/sites-enabled/
+  file: src=/etc/nginx/sites-available/{{ servicename }} dest=/etc/nginx/sites-enabled/{{ servicename }} state=link force=yes
+  when: not site_enabled.stat.exists
+  become: yes
+

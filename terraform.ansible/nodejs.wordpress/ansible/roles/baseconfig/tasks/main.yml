@@ -1,0 +1,66 @@
+---
+# tasks file for roles/blogsrvr
+- name: Check if Service Exists
+  stat: path=/etc/init.d/apache2
+  register: service_status
+
+- name: Stop any service running by www-data user
+  service:
+    name: apache2
+    state: stopped
+  when: service_status.stat.exists
+  register: service_stopped
+  become: yes
+
+- name: Create www-data directory
+  file:
+    path: /home/www-data/.ssh
+    state: directory
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: Change www-data login shell
+  shell: usermod -s /bin/bash www-data
+  become: yes
+
+- name: Change www-data login directory
+  shell: usermod -d /home/www-data/ www-data
+  become: yes
+
+- name: Copy your GIT SERVER ssh_key to clone your project
+  copy:
+    src: "{{ role_path }}/files/gitservice_id_rsa"
+    dest: /home/www-data/.ssh/
+    mode: 0600
+    owner: www-data
+    group: www-data
+    force: no
+  become: yes
+
+- name: Change git ssh key owner
+  shell: chown www-data.www-data /home/www-data/.ssh/gitservice_id_rsa
+  become: yes
+
+- name: Set Forward Agent
+  shell: echo "ForwardAgent yes" | sudo tee /home/www-data/.ssh/config
+  become: yes
+
+- name: Change owner ssh config file
+  shell: chown www-data.www-data /home/www-data/.ssh/config
+  become: yes
+
+- name: Backend wordpress web root directory
+  file:
+    path: /var/www/{{ project }}/www
+    state: directory
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: convert gpg
+  shell: "{{ item }}"
+  with_items:
+    - gpg --keyserver  hkp://keyserver.ubuntu.com:80 --recv-keys 4F4EA0AAE5267A6C
+    - gpg -a --export --armor 4F4EA0AAE5267A6C | sudo apt-key add -
+  become: yes 

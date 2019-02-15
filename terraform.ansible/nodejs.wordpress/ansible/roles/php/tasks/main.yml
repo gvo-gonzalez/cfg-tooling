@@ -1,0 +1,90 @@
+---
+# tasks file for roles/blogsrvr
+#- name: Check if php was installed 
+#  shell: "{{ item }}"
+#  with_items:
+#    - dpkg -s php
+#  register: php_check
+ 
+#- name: Remove unwanted previous packages
+#  apt:
+#    name: "{{ item }}"
+#    state: absent
+#    purge: yes
+#    update_cache: true
+#  with_items:
+#    - php7.1*
+#    - apache2*
+#  become: yes
+#  when: php_check.rc == 1
+
+- name: Add repo required package
+  apt:
+    name: "{{ item }}" 
+    state: present
+    update_cache: true
+  with_items:
+    - apt-utils
+    - apt-transport-https
+    - lsb-release
+    - ca-certificates
+    - wget
+    - python-software-properties
+    - software-properties-common
+    - htop
+  become: yes
+
+#- name: convert gpg
+#  shell: "{{ item }}"
+#  with_items:
+#    - gpg --keyserver  hkp://keyserver.ubuntu.com:80 --recv-keys 4F4EA0AAE5267A6C
+#    - gpg -a --export --armor 4F4EA0AAE5267A6C | sudo apt-key add -
+
+- name: Add repository for php7.1 packages
+  apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+  become: yes
+
+- name: Install base software
+  apt:
+    name: "{{item}}"
+    state: present
+    update_cache: true
+  with_items:
+    - php7.1
+    - libapache2-mod-php7.1
+    - php7.1-cgi
+    - php7.1-gd
+    - php7.1-mysql
+    - php7.1-json
+    - php7.1-mcrypt
+    - php7.1-xml
+    - php7.1-mbstring
+    - php7.1-curl
+    - php7.1-memcached
+    - php7.1-xmlrpc
+    - memcached 
+    - apache2
+    - nginx
+    - php7.1-imagick
+    - php7.1-zip
+    - libssh2-php
+    - git
+    - zip
+    - unzip
+    - elinks
+  become: yes
+
+- name: Restart Apache
+  service:
+    name: apache2
+    state: stopped
+  become: yes
+
+- name: Restart Apache
+  service:
+    name: nginx
+    state: stopped
+  become: yes
+

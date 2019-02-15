@@ -1,0 +1,76 @@
+---
+# tasks file for roles/blogsrvr
+- name: Enable ssh-agent
+  shell: "{{ item }}"
+  with_items:  
+    eval $(ssh-agent)
+    ssh-add /home/www-data/.ssh/bitbucket_id_rsa
+  become: yes
+  become_user: www-data
+
+- name: install setfacl support
+  become: yes
+  apt: pkg=acl
+
+- name: Check if had cloned this project
+  stat: 
+    path: /var/www/{{ servicename }}/www/.env.example
+  register: check_if_cloned
+
+- name: Clone project
+  git:
+    repo: git@bitbucket.org:123developers/{{ reponame }}.git
+    version: master
+    dest: /var/www/{{ servicename }}/www
+    key_file: /home/www-data/.ssh/bitbucket_id_rsa
+    accept_hostkey: yes
+  become: yes
+  become_user: www-data
+  when: not check_if_cloned.stat.exists
+
+- name: Create file .env renaming .env.example
+  shell: "{{ item }}"
+  with_items:
+    - cp /var/www/{{ servicename }}/www/.env.example /var/www/{{ servicename }}/www/.env
+  become:  yes
+  become_user: www-data
+
+- name: composer create-project
+  composer:
+    command: install
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Generate key 
+  copy:
+    src: "{{ role_path }}/files/key_generate.sh"
+    dest: /var/www/{{ servicename }}/www/
+    owner: www-data
+    group: www-data
+    mode: 0775
+  become: yes
+
+- name: Run artisan key generate
+  shell: /var/www/{{ servicename }}/www/key_generate.sh /var/www/{{ servicename }}/www/
+#  shell: php /var/www/{{ servicename }}/www/artisan key:generate
+  become: yes
+  become_user: www-data
+
+- name: Running composer update
+  composer:
+    command: update
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Enable {{ servicename }} project
+  shell: a2ensite {{ servicename }}
+  become: yes
+
+- name: Restart Apache
+  service:
+    name: apache2
+    state: restarted
+  become: yes
+

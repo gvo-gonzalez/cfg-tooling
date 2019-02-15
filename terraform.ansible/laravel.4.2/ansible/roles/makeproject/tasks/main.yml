@@ -1,0 +1,173 @@
+---
+# tasks file for roles/blogsrvr
+- name: Enable ssh-agent
+  shell: "{{ item }}"
+  with_items:  
+    eval $(ssh-agent)
+    ssh-add /home/www-data/.ssh/{{ ssh_gitservice_key_name }}
+  become: yes
+  become_user: www-data
+
+- name: install setfacl support
+  become: yes
+  apt: pkg=acl
+
+- name: Check if had cloned this project
+  stat: 
+    path: /var/www/{{ servicename }}/www/.env.example
+  register: check_if_cloned
+
+- name: Clone project
+  git:
+    repo: git@{{ gitservice }}:{{ gitproject }}/{{ reponame }}.git
+    version: master
+    dest: /var/www/{{ servicename }}/www
+    key_file: /home/www-data/.ssh/{{ ssh_gitservice_key_name }}
+    accept_hostkey: yes
+  become: yes
+  become_user: www-data
+  when: not check_if_cloned.stat.exists
+
+# Configure and secure php.ini
+
+- name: php.ini - Change max upload size to 15M
+  replace: dest=/etc/php/5.6/cli/php.ini regexp='^upload_max_filesize = .*$' replace='upload_max_filesize = 15M'
+  become: yes
+
+- name: php.ini - Change memory limit to 256M
+  replace: dest=/etc/php/5.6/cli/php.ini regexp='^memory_limit = .*$' replace='memory_limit = 256M'
+  become: yes
+
+#- name: php.ini - Ensure php5.6.0-fpm cgi.fix_pathinfo=0
+#  lineinfile: dest=/etc/php/5.6/cli/php.ini regexp='^(.*)cgi.fix_pathinfo=' line=cgi.fix_pathinfo=0
+#  notify: restart php7.0-fpm
+
+- name: php.ini - Change max upload size to 15M
+  replace: dest=/etc/php/5.6/fpm/php.ini regexp='^upload_max_filesize = .*$' replace='upload_max_filesize = 15M'
+  become: yes
+
+- name: php.ini - Change memory limit to 256M
+  replace: dest=/etc/php/5.6/fpm/php.ini regexp='^memory_limit = .*$' replace='memory_limit = 1G'
+  become: yes
+
+- name: php.ini - Ensure php5.6-fpm cgi.fix_pathinfo=0
+  lineinfile: dest=/etc/php/5.6/fpm/php.ini regexp='^(.*)cgi.fix_pathinfo=' line=cgi.fix_pathinfo=0
+  become: yes
+
+- name: Create env.testing file !!! This file is project specific ¡¡¡¡
+  copy:
+    src: "{{ role_path }}/files/.env"
+    dest:  /var/www/{{ servicename }}/www/
+    owner: www-data
+    group: www-data
+    mode: 0775
+  become: yes
+
+- name: Create env.testing file !!! AGAIN this file is project specific ¡¡¡¡
+  copy: 
+    src: "{{ role_path }}/files/.env.testing.php"
+    dest:  /var/www/{{ servicename }}/www/
+    owner: www-data
+    group: www-data
+    mode: 0775
+  become: yes
+
+- name: Create config environment folder  !!! Project specific ¡¡¡¡
+  copy:
+    src: "{{ role_path }}/files/testing"
+    dest:  /var/www/{{ servicename }}/www/app/config
+    owner: www-data
+    group: www-data
+    mode: 0775
+  become: yes
+
+- name: Create app.php config file !!! This file is project specific ¡¡¡¡
+  copy:
+    src: "{{ role_path }}/files/testing/app.php"
+    dest: /var/www/{{ servicename }}/www/app/config
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: Create storage directory, laravel 4 need this to run and write logs and sessions
+  file:
+    path: /var/www/{{ servicename }}/www/app/storage
+    state: directory
+    mode: 0777
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: Set Composer Heroku password if you need some libraries for your project like this one
+  composer:
+    command: config
+    arguments: http-basic.the-magic-repo.herokuapp.com  {{ repouser }} {{ repopass }}
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: composer create-project
+  composer:
+    command: install
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Composer issue
+  composer:
+    command: config
+    arguments: platform.ext-mongo 1.6.16
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Composer issue
+  composer:
+    command: require
+    arguments: alcaeus/mongo-php-adapter
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Composer issue
+  composer:
+    command: require
+    arguments: maknz/slack-laravel
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+#- name: Generate key 
+#  copy:
+#    src: "{{ role_path }}/files/key_generate.sh"
+#    dest: /var/www/{{ servicename }}/www/
+#    owner: www-data
+#    group: www-data
+#    mode: 0775
+#  become: yes
+
+- name: Run artisan key generate
+#  shell: /var/www/{{ servicename }}/www/key_generate.sh /var/www/{{ servicename }}/www/
+  shell: php /var/www/{{ servicename }}/www/artisan key:generate
+  become: yes
+  become_user: www-data
+
+- name: Running composer update
+  composer:
+    command: update
+    working_dir: /var/www/{{ servicename }}/www
+  become: yes
+  become_user: www-data
+
+- name: Restart FPM
+  service:
+    name: php5.6-fpm
+    state: restarted
+  become: yes
+
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+  become: yes
+

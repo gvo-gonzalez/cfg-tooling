@@ -1,0 +1,26 @@
+---
+# vars file for roles/blogsrvr
+- name: Remmove unwanted previous packages
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+    update_cache: true
+  with_items:
+    - php5*
+    - apache2*
+  become: yes
+
+- name: Add repo requiered package
+  apt:
+    name: python-software-properties
+    state: present
+    update_cache: yes
+  become: yes
+
+- name: Add repository for php5.6 packages
+  apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+  become: yes
+

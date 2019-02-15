@@ -1,0 +1,60 @@
+---
+# tasks file for roles/blogsrvr
+- name: Set FqDN for localhost
+  shell: echo "ServerName localhost" | sudo tee /etc/apache2/conf-available/fqdn.conf
+
+- name: FQDN for apache
+  shell: a2enconf fqdn
+  become: yes
+
+- name: Disable Default Virtual Host on Apache/Ubuntu14.04
+  shell: a2dissite 000-default.conf
+  become: yes
+
+- name: VirtualHost Setup
+  copy:
+    src: "{{ role_path }}/files/defaultApacheConf"
+    dest: /etc/apache2/sites-available/{{ servicename }}.conf
+    force: yes
+  become: yes
+
+- name: Change default VirtualHost Config
+  replace:
+    dest: /etc/apache2/sites-available/{{ servicename }}.conf
+    regexp: 'subdomain.domain.com'
+    replace: '{{ servicename }}'
+    backup: yes
+  become: yes
+
+- name: Replace webroot directory name
+  replace:
+    dest: /etc/apache2/sites-available/{{ servicename }}.conf
+    regexp: 'webroot'
+    replace: '{{ servicename }}/www/public'
+    backup: yes
+  become: yes
+
+- name: Enable apache modules rewrite ssl
+  apache2_module:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - rewrite
+    - ssl
+  become: yes
+
+- name: Create ssl apache directory
+  file:
+    path: /etc/apache2/ssl
+    state: directory
+  become: yes
+
+- name: Copy SSL Certificates
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: '{{ role_path }}/files/wildcard2018_123seguro_com.crt', dest: '/etc/apache2/ssl/' }
+    - { src: '{{ role_path }}/files/wildcard2018_123seguro_com.key', dest: '/etc/apache2/ssl/' }
+  become: yes
+

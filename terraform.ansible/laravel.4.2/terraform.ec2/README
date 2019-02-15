@@ -1,0 +1,43 @@
+https://pragmacoders.com/2-creating-an-ec2-instance-with-terraform/
+
+1 - Change/Edit variables to be reused by the rest of the configuration.
+
+file: variables.tf
+
+2 - Change/Edit providers file if needed, this project works with AWS, but it can be raplaced by any other provider
+
+file: provider.tf
+
+3 - Change/Edit the AMI required by your project. We define a datasource here to follow the updaes applied to this image
+
+file: aws_ami.tf
+
+4 - Change/Edit this file if required to assign an elastic ip
+
+file: eip.tf
+
+5 - Output terraform variables
+
+file: outputs.tf
+
+6 - Change/Edit your security groups as needed
+
+file: security_group.tf 
+
+7 - Generate a key to be used by this instance
+
+	$ cd ~/.ssh/
+	$ ssh-keygen -t rsa -b 2048 -v -f ~/.ssh/my_test_key.pub
+
+	Back in the project directory, execute the following command:
+	$ cat ~/.ssh/my_test_key.pub > my_test_key.pub
+
+8 - Create a key pair resource whith the key generated at the last.
+
+file: key_pair.tf
+
+9 - Put all together
+
+file: main.tf
+
+

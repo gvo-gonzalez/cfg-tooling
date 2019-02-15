@@ -1,0 +1,125 @@
+---
+# tasks file for roles/blogsrvr
+- name: Remmove unwanted previous packages
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+    update_cache: true
+  with_items:
+    - php7*
+    - php5*
+    - php*
+    - apache2*
+    - nginx
+  become: yes
+  ignore_errors: yes
+
+- name: Add repo required package
+  apt:
+    name: "{{ item }}" 
+    state: present
+    update_cache: true
+  with_items:
+    - apt-utils
+    - apt-transport-https
+    - lsb-release
+    - ca-certificates
+    - wget
+    - python-software-properties
+    - software-properties-common
+    - vim
+    - curl
+    - nginx
+    - redis-server
+    - mongodb-server
+    - openssl
+    - pkg-config
+    - htop
+  become: yes
+
+- name: Add repository for php5.6 packages
+  apt_repository:
+    repo: ppa:ondrej/php
+    state: present
+  become: yes
+
+- name: Install base software
+  apt:
+    name: "{{item}}"
+    state: present
+    update_cache: true
+  with_items:
+    - php5.6
+    - php5.6-cgi
+    - php5.6-gd
+    - php5.6-mysql
+    - php5.6-json
+    - php5.6-mcrypt
+    - php5.6-xml
+    - php5.6-mbstring
+    - php5.6-curl
+    - php5.6-fpm
+    - php5.6-imagick
+    - php5.6-zip
+    - php5.6-dev
+    - php5.6-soap
+    - php5.6-redis 
+    - php5.6-readline
+    - php5.6-mbstring
+    - php-pear
+    - php5.6-xml
+    - php-xml
+    - libcurl4-openssl-dev 
+    - pkg-config 
+    - libssl-dev 
+    - libpcre3-dev 
+    - libsslcommon2-dev
+    - libssh2-php
+    - git
+    - zip
+    - unzip
+    - elinks
+  become: yes
+
+- name: It's to enable some php modules
+  shell: php-config --configure-options --enable-soap
+  become: yes
+
+- name: Install composer
+  shell: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+  args:
+    creates: /usr/local/bin/composer
+  become: yes
+
+- name: Remmove unwanted previous packages
+  apt:
+    name: "{{ item }}"
+    state: absent
+    purge: yes
+    update_cache: true
+  with_items:
+    - php7*
+  become: yes
+
+- name: Check if mongodb is installed with pecl command
+  shell: pecl list | grep mongodb
+  register: mongodb_stat
+
+- name: We Need to remove  MongoClient for php5.6 if exist
+  shell: printf "\n" | sudo pecl uninstall mongodb
+  become: yes
+  when: 'mongodb' in mongodb_stat.stdout
+  #ignore_errors: True
+
+- name: And now install Pecl MongoClient for php5.6 
+  shell: printf "\n" | sudo pecl install mongodb 
+  become: yes
+
+- name: Add mongo module to fpm/php.ini config file
+  shell: sed -i '861i extension=mongodb.so' /etc/php/5.6/fpm/php.ini
+  become: yes
+
+- name: Add mongo module to cli/php.ini config file
+  shell: sed -i '861i extension=mongodb.so' /etc/php/5.6/cli/php.ini
+  become: yes

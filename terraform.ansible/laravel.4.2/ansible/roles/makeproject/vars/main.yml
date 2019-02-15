@@ -1,0 +1,9 @@
+---
+# vars file for roles/blogsrvr
+servicename: your_domain_here 
+gitservice: bitbucket.org
+gitproject: your_project_name
+ssh_gitservice_key_name: bitbucket_id_rsa_or_whatever
+reponame: your_git_reponame_here
+repouser: your_heroku_repo_user
+repopass: yoour_heroku_repo_pass

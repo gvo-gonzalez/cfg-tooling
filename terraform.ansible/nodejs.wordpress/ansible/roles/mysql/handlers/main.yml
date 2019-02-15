@@ -1,0 +1,9 @@
+---
+# This playbook contains common handlers that can be called in tasks.
+ 
+# sudo service mysql restart (whether running or not)
+- name: Restart MySQL
+  service:
+    name: mysql
+    state: restarted
+    enabled: yes

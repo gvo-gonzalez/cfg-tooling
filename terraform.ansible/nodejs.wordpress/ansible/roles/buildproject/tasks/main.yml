@@ -1,0 +1,71 @@
+---
+# tasks file for roles/blogsrvr
+- name: Enable ssh-agent
+  shell: "{{ item }}"
+  with_items:  
+    eval $(ssh-agent)
+    ssh-add /home/www-data/.ssh/gitservice_id_rsa
+  become: yes
+  become_user: www-data
+
+- name: install setfacl support
+  become: yes
+  apt: pkg=acl
+
+- name: Check if we had cloned this project 
+  stat: 
+    path: /var/www/{{ servicename }}/www/.env
+  register: check_if_cloned
+
+- name: Clone project
+  git:
+    repo: git@{{ gitserver }}:{{ team_or_project }}/{{ reponame }}.git
+    version: master
+    dest: /var/www/{{ servicename }}/www
+    key_file: /home/www-data/.ssh/gitservice_id_rsa
+    accept_hostkey: yes
+  become: yes
+  become_user: www-data
+  when: not check_if_cloned.stat.exists
+
+- name: Build node project
+  shell: "{{ item }}"
+  with_items:
+    - bash -c '.  ~/.nvm/nvm.sh && npm install --prefix /var/www/{{ servicename }}/www'
+  become: yes
+  become_user: www-data
+
+- name: Remove Swap space
+  shell: "{{ item }}"
+  with_items:
+    - /sbin/swapoff /var/swap.1
+  become: yes
+
+- name: Enable {{ servicename }} project
+  shell: "{{ item }}" 
+  with_items:
+#    - a2ensite {{ servicename }}
+    - a2enmod headers
+    - a2enmod rewrite
+    - a2enmod env
+    - a2enmod dir
+    - a2enmod mime
+    - a2dissite 000-default.conf
+  become: yes
+
+#- name: Leave running node server on port 1234
+#  shell: "{{ item }}"
+#  with_items:
+#    - bash -c '.  ~/.nvm/nvm.sh && screen -L -dmS 123blog nodemon /var/www/123blog.123seguro.com/www/server.js 3000'
+- name: Restart Apache
+  service:
+    name: apache2
+    state: restarted
+  become: yes
+
+- name: Restart Nginx
+  service:
+    name: nginx
+    state: restarted
+  become: yes
+

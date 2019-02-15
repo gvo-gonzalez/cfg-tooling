@@ -1,0 +1,11 @@
+---
+# vars file for roles/blogsrvr
+servicename: your_domain_com.crt
+serveradmin: webmaster@localhost
+global_http_port: 8080
+global_https_port: 4043
+vhost_http_port: 8081
+vhost_https_port: 4431
+sslcrt_name: your_domain_com.crt.crt
+sslkey_name: your_domain_com.crt.key
+

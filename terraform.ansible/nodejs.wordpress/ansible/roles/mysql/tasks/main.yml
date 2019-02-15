@@ -1,0 +1,55 @@
+---
+# This playbook contains mysql actions that will be run on "mysql" hosts.
+ 
+# sudo apt-get install *
+- name: Install MySQL and packages
+  apt:
+    name: "{{ item }}"
+    state: present
+    update_cache: yes
+  with_items:
+    - mysql-server-5.6
+    - mysql-client-5.6
+    - python-mysqldb
+    - libmysqlclient-dev
+  tags:
+    - mysql
+  become: yes
+ 
+# Remove all anonymous users for all hosts
+- name: Remove all anonymous user accounts
+  mysql_user:
+    login_user: "{{ mysql.user }}"
+    login_password: "{{ mysql.old_password }}"
+    name: ""
+    host_all: yes
+    state: absent
+  tags:
+    - mysql
+ 
+# Update "root" user password and grant all permissions for all hosts
+- name: Update "root" user password and grant all permissions for all hosts
+  mysql_user:
+    login_user: "{{ mysql.user }}"
+    login_password: "{{ mysql.old_password }}"
+    host: "{{ item }}"
+    check_implicit_admin: yes
+    name: "{{ mysql.user }}"
+    password: "{{ mysql.new_password }}"
+    priv: "*.*:ALL,GRANT"
+    state: present
+  with_items:
+    - "{{ mysql.hosts }}"
+  tags:
+    - mysql
+  become: yes 
+    
+# Restart MySQL
+- name: Restart MySQL
+  command: /bin/true
+  notify:
+    - Restart MySQL
+  tags:
+    - mysql
+  become: yes
+

@@ -1,0 +1,6 @@
+---
+# vars file for roles/blogsrvr
+servicename: your.domain.com
+domains: your.domain.com
+single_or_wildcardcrt: your_domain_com.crt
+single_or_wildcardkey: your_domain_com.key

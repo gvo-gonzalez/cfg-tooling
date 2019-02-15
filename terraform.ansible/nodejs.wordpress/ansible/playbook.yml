@@ -1,0 +1,9 @@
+- hosts: all
+  roles:
+   - baseconfig
+   - php
+   - apacheconf
+   - nginxconf
+#   - mysql
+   - nodejs
+   - buildproject

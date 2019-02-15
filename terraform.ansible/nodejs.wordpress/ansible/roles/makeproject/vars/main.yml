@@ -1,0 +1,4 @@
+---
+# vars file for roles/blogsrvr
+servicename: oauthservice-staging.123seguro.com 
+reponame: 123oauthservice

@@ -1,0 +1,11 @@
+I build this project to setup a laravel 4 with nginx/fpm project to test a directory 
+redirect to a wordpress with a node/express frontend with node running behind nginx.
+
+This include two servers on AWS provisioned and configured with Ansible:
+- The first one has nginx/fpm/php5.6/laravel4.2 
+- The second server includes an 
+	- Nginx to serv as a proxy to node/express frontend for wordpress api
+ 	- Apache to serve a wordpress api
+	- Node/Express service tu run on front of a wordpress blog
+
+

@@ -1,0 +1,82 @@
+---
+# tasks file for roles/blogsrvr
+- name: Check if Service Exists
+  stat: path=/etc/init.d/nginx
+  become: yes
+  register: service_status
+
+- name: Stop any service running by www-data user
+  service:
+    name: nginx
+    state: stopped
+  when: service_status.stat.exists
+  register: service_stopped
+  become: yes
+
+- name: Create www-data user directory
+  file:
+    path: /home/www-data/.ssh
+    state: directory
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: Change www-data user his login shell
+  shell: usermod -s /bin/bash www-data
+  become: yes
+
+- name: Change www-data user his login directory
+  shell: usermod -d /home/www-data/ www-data
+  become: yes
+
+- name: Copy Bitbucket ssh_key for pull projects
+  copy:
+    src: "{{ role_path }}/files/git_ssh_key_file"
+    dest: /home/www-data/.ssh/
+    mode: 0600
+    owner: www-data
+    group: www-data
+    force: no
+  become: yes
+
+- name: Change git ssh key owner
+  shell: chown www-data.www-data /home/www-data/.ssh/git_ssh_key_file
+  become: yes
+
+- name: Set Forward Agent
+  shell: echo "ForwardAgent yes" | sudo tee /home/www-data/.ssh/config
+  become: yes
+
+- name: Change owner ssh config file
+  shell: chown www-data.www-data /home/www-data/.ssh/config
+  become: yes
+
+- name: Create project web root directory
+  file:
+    path: /var/www/{{ servicename }}/www
+    state: directory
+    owner: www-data
+    group: www-data
+  become: yes
+
+- name: convert gpg
+  shell: "{{ item }}"
+  with_items:
+    - gpg --keyserver  hkp://keyserver.ubuntu.com:80 --recv-keys 4F4EA0AAE5267A6C
+    - gpg -a --export --armor 4F4EA0AAE5267A6C | sudo apt-key add -
+  become: yes
+
+# Only for use with Vagrant
+- name: Check if swap file exist
+  stat: 
+    path: /var/swap.1
+  register: swap_file_check
+
+- name: Setting up swap space if not exist
+  shell: "{{ item }}"
+  with_items:
+    - /bin/dd if=/dev/zero of=/var/swap.1 bs=1M count=2048
+    - /sbin/mkswap /var/swap.1
+    - /sbin/swapon /var/swap.1 
+  become: yes
+  when: not swap_file_check.stat.exists
